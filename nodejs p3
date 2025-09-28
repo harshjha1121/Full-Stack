@@ -1,0 +1,90 @@
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+const TOTAL_SEATS = 10;
+let seats = [];
+let lockTimers = {};
+
+for (let i = 1; i <= TOTAL_SEATS; i++) {
+  seats.push({
+    id: i,
+    status: 'available', // available | locked | booked
+    lockedBy: null,
+    lockExpiry: null,
+  });
+}
+
+function findSeat(seatId) {
+  return seats.find(seat => seat.id === parseInt(seatId));
+}
+
+// GET /seats -> View all seats
+app.get('/seats', (req, res) => {
+  res.json(seats);
+});
+
+app.post('/seats/:id/lock', (req, res) => {
+  const { user } = req.body;
+  const seat = findSeat(req.params.id);
+
+  if (!seat) {
+    return res.status(404).json({ error: 'Seat not found' });
+  }
+
+  if (seat.status === 'booked') {
+    return res.status(400).json({ error: 'Seat already booked' });
+  }
+
+  if (seat.status === 'locked' && seat.lockExpiry < Date.now()) {
+    seat.status = 'available';
+    seat.lockedBy = null;
+    seat.lockExpiry = null;
+    clearTimeout(lockTimers[seat.id]);
+  }
+
+  if (seat.status === 'locked') {
+    return res.status(400).json({ error: 'Seat already locked' });
+  }
+
+  seat.status = 'locked';
+  seat.lockedBy = user || 'anonymous';
+  seat.lockExpiry = Date.now() + 60 * 1000; // 1 min expiry
+
+  lockTimers[seat.id] = setTimeout(() => {
+    seat.status = 'available';
+    seat.lockedBy = null;
+    seat.lockExpiry = null;
+  }, 60 * 1000);
+
+  res.json({ message: `Seat ${seat.id} locked successfully for 1 minute`, seat });
+});
+
+app.post('/seats/:id/confirm', (req, res) => {
+  const { user } = req.body;
+  const seat = findSeat(req.params.id);
+
+  if (!seat) {
+    return res.status(404).json({ error: 'Seat not found' });
+  }
+
+  if (seat.status === 'booked') {
+    return res.status(400).json({ error: 'Seat already booked' });
+  }
+
+  if (seat.status !== 'locked' || seat.lockedBy !== (user || 'anonymous')) {
+    return res.status(400).json({ error: 'Seat not locked by you or expired' });
+  }
+  seat.status = 'booked';
+  seat.lockedBy = user || 'anonymous';
+  seat.lockExpiry = null;
+  clearTimeout(lockTimers[seat.id]);
+
+  res.json({ message: `Seat ${seat.id} booked successfully`, seat });
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Ticket Booking API running at http://localhost:${PORT}`);
+});
