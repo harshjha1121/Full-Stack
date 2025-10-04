@@ -1,0 +1,37 @@
+db.products.insertMany([
+  {
+    name: "T-Shirt",
+    price: 25,
+    category: "Clothing",
+    variants: [
+      { color: "Red", size: "M", stock: 50 },
+      { color: "Blue", size: "L", stock: 30 }
+    ]
+  },
+  {
+    name: "Sneakers",
+    price: 80,
+    category: "Footwear",
+    variants: [
+      { color: "White", size: 9, stock: 20 },
+      { color: "Black", size: 10, stock: 15 }
+    ]
+  },
+  {
+    name: "Backpack",
+    price: 40,
+    category: "Accessories",
+    variants: [
+      { color: "Grey", size: "Standard", stock: 10 },
+      { color: "Black", size: "Large", stock: 5 }
+    ]
+  }
+]);
+db.products.find().pretty();
+db.products.find({ category: "Clothing" }).pretty();
+db.products.find({}, { name: 1, variants: 1, _id: 0 }).pretty();
+db.products.find({ "variants.color": "Black" }).pretty();
+db.products.updateOne(
+  { name: "T-Shirt", "variants.color": "Red", "variants.size": "M" },
+  { $set: { "variants.$.stock": 45 } }
+);
