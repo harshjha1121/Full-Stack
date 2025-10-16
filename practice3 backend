@@ -1,0 +1,95 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+const app = express();
+const PORT = 3000;
+
+// -----------------------
+// Middleware
+// -----------------------
+app.use(bodyParser.json());
+
+// -----------------------
+// MongoDB Connection
+// -----------------------
+mongoose.connect('mongodb://localhost:27017/banking', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('MongoDB connection error:', err));
+
+// -----------------------
+// Account Schema
+// -----------------------
+const accountSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  balance: { type: Number, default: 0 }
+});
+
+const Account = mongoose.model('Account', accountSchema);
+
+// -----------------------
+// Sample accounts (for testing)
+// -----------------------
+const initAccounts = async () => {
+  const count = await Account.countDocuments();
+  if (count === 0) {
+    await Account.create([
+      { username: 'alice', balance: 5000 },
+      { username: 'bob', balance: 3000 },
+      { username: 'charlie', balance: 1000 }
+    ]);
+    console.log('Sample accounts created');
+  }
+};
+initAccounts();
+
+// -----------------------
+// Transfer Endpoint
+// -----------------------
+app.post('/transfer', async (req, res) => {
+  const { from, to, amount } = req.body;
+
+  if (!from || !to || !amount || amount <= 0) {
+    return res.status(400).json({ error: 'Invalid transfer request' });
+  }
+
+  try {
+    // Find sender and receiver accounts
+    const sender = await Account.findOne({ username: from });
+    const receiver = await Account.findOne({ username: to });
+
+    if (!sender || !receiver) {
+      return res.status(404).json({ error: 'One or both accounts not found' });
+    }
+
+    if (sender.balance < amount) {
+      return res.status(400).json({ error: 'Insufficient funds' });
+    }
+
+    // Sequential updates (no transaction)
+    sender.balance -= amount;
+    await sender.save();
+
+    receiver.balance += amount;
+    await receiver.save();
+
+    res.json({
+      message: 'Transfer successful',
+      sender: { username: sender.username, balance: sender.balance },
+      receiver: { username: receiver.username, balance: receiver.balance }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// -----------------------
+// Start server
+// -----------------------
+app.listen(PORT, () => {
+  console.log(`Banking transfer API running at http://localhost:${PORT}`);
+});
