@@ -1,0 +1,47 @@
+const express = require('express');
+const app = express();
+const PORT = 3000;
+
+// -----------------------
+// Logger Middleware
+// -----------------------
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.url}`);
+  next(); // Pass control to the next middleware or route
+});
+
+// -----------------------
+// Auth Middleware
+// -----------------------
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+
+  // Check if Authorization header exists and matches the expected token
+  if (!authHeader || authHeader !== 'Bearer mysecrettoken') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  next(); // Authorized, proceed to the route
+};
+
+// -----------------------
+// Routes
+// -----------------------
+
+// Public route - accessible by anyone
+app.get('/public', (req, res) => {
+  res.send('This is a public route accessible by anyone.');
+});
+
+// Protected route - requires valid Bearer token
+app.get('/protected', authMiddleware, (req, res) => {
+  res.send('You have accessed a protected route!');
+});
+
+// -----------------------
+// Start the server
+// -----------------------
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
