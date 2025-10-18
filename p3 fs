@@ -1,0 +1,198 @@
+import React, { useEffect, useState, useRef } from "react";
+import { io } from "socket.io-client";
+
+const SOCKET_URL = "http://localhost:5000"; // your Express server URL
+
+const App = () => {
+  const [socket, setSocket] = useState(null);
+  const [name, setName] = useState("");
+  const [joined, setJoined] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [users, setUsers] = useState([]);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    // Connect to socket server
+    const newSocket = io(SOCKET_URL);
+    setSocket(newSocket);
+
+    // Listen for messages
+    newSocket.on("message", (data) => {
+      setMessages((prev) => [...prev, data]);
+    });
+
+    // Listen for user list updates
+    newSocket.on("users", (data) => {
+      setUsers(data);
+    });
+
+    // Cleanup when component unmounts
+    return () => newSocket.disconnect();
+  }, []);
+
+  // Scroll to latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleJoin = () => {
+    if (!name.trim()) return alert("Enter your name to join");
+    socket.emit("join", { name });
+    setJoined(true);
+  };
+
+  const sendMessage = () => {
+    if (!message.trim()) return;
+    socket.emit("sendMessage", { text: message });
+    setMessage("");
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        fontFamily: "Arial, sans-serif",
+        background: "#f8f8f8",
+      }}
+    >
+      {/* Sidebar */}
+      <div
+        style={{
+          width: "250px",
+          background: "#fff",
+          borderRight: "1px solid #ddd",
+          padding: "20px",
+        }}
+      >
+        <h2>💬 Chat App</h2>
+        {!joined ? (
+          <div>
+            <input
+              type="text"
+              placeholder="Enter your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                marginBottom: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "5px",
+              }}
+            />
+            <button
+              onClick={handleJoin}
+              style={{
+                width: "100%",
+                padding: "8px",
+                background: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              Join Chat
+            </button>
+          </div>
+        ) : (
+          <>
+            <p>
+              <strong>Welcome:</strong> {name}
+            </p>
+            <p>
+              <strong>Active Users:</strong>
+            </p>
+            <ul>
+              {users.map((u, i) => (
+                <li key={i}>{u}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+
+      {/* Chat Area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "20px",
+            background: "#f0f0f0",
+          }}
+        >
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              style={{
+                marginBottom: "10px",
+                textAlign: msg.user === name ? "right" : "left",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-block",
+                  background:
+                    msg.user === name ? "#007bff" : "lightgray",
+                  color: msg.user === name ? "white" : "black",
+                  padding: "8px 12px",
+                  borderRadius: "15px",
+                  maxWidth: "60%",
+                  wordWrap: "break-word",
+                }}
+              >
+                <strong>{msg.user}:</strong> {msg.text}
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Box */}
+        {joined && (
+          <div
+            style={{
+              display: "flex",
+              padding: "10px",
+              borderTop: "1px solid #ddd",
+              background: "#fff",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              style={{
+                flex: 1,
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "5px",
+                marginRight: "10px",
+              }}
+            />
+            <button
+              onClick={sendMessage}
+              style={{
+                padding: "10px 15px",
+                background: "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "5px",
+                cursor: "pointer",
+              }}
+            >
+              Send
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default App;
