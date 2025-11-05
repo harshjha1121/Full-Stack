@@ -1,0 +1,12 @@
+my-react-app/
+├── Dockerfile
+├── .dockerignore
+├── package.json
+├── package-lock.json
+├── public/
+│   ├── index.html
+│   └── favicon.ico
+└── src/
+    ├── App.js
+    ├── index.js
+    └── App.css
