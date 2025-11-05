@@ -1,0 +1,9 @@
+my-react-app/
+├── src/
+├── public/
+├── package.json
+├── Dockerfile
+├── .dockerignore
+├── .github/
+│   └── workflows/
+│       └── main.yml
