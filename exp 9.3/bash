@@ -1,0 +1,32 @@
+#!/bin/bash
+# user-data for Amazon Linux 2 or Ubuntu (adjust package manager if needed)
+set -e
+
+# For Amazon Linux 2
+# yum update -y
+# curl -sL https://rpm.nodesource.com/setup_18.x | bash -
+# yum install -y nodejs git
+
+# For Ubuntu
+apt-get update -y
+apt-get install -y curl git build-essential
+
+curl -sL https://deb.nodesource.com/setup_18.x | bash -
+apt-get install -y nodejs
+
+# install pm2 to keep node process alive
+npm install -g pm2
+
+# clone app
+cd /home/ubuntu
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git app || (cd app && git pull)
+cd app/backend
+
+# set instance id in env for response (optional)
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id || echo "local")
+echo "export INSTANCE_ID=${INSTANCE_ID}" >> /etc/profile
+
+npm install
+pm2 start server.js --name simple-backend --watch
+pm2 startup systemd
+pm2 save
